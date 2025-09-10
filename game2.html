@@ -25,7 +25,6 @@
     .run { background: #28a745; color: white; }
     .reset { background: #6c757d; color: white; }
     #mycanvas { width: 400px; height: 400px; border: 3px solid #2DAA9E; border-radius: 10px; margin: 14px auto 0; position: relative; display:block; }
-    #map, #tilemap { position: absolute; top: 0; left: 0; width: 400px; height: 400px; pointer-events: none; }
     .controls { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
     .meta { margin-top:8px; font-size:14px; color:#333; text-align:center; }
   </style>
@@ -135,13 +134,21 @@
     return Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, prog, true));
   }
 
+  // 🔹 cek valid step (step pertama boleh left(180) atau right(180))
+  function isValidForStep(stepIndex, parsed) {
+    if (stepIndex === 0) {
+      return parsed === "left(180)" || parsed === "right(180)";
+    }
+    return parsed === validSteps[stepIndex];
+  }
+
   async function runStep() {
     const raw = document.getElementById("command").value;
     if (!raw.trim()) return;
     const parsed = parseCommand(raw);
     document.getElementById("command").value = "";
 
-    if (parsed === validSteps[currentStep]) {
+    if (isValidForStep(currentStep, parsed)) {
       historyCmds.push(parsed);
       try {
         await runProgramReplay(historyCmds);
