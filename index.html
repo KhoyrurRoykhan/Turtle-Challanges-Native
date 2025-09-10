@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Turtle Challenges - Masukkan Nama</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url("assets/images/bg.gif") no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .box {
+      background: rgba(255, 255, 255, 0.92); /* semi transparan biar bg gif keliatan */
+      padding: 40px 36px;
+      border-radius: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      width: 420px;
+      max-width: 90%;
+      text-align: center;
+      animation: fadeIn 0.8s ease;
+    }
+    h1 {
+      margin: 0 0 18px;
+      font-size: 34px;
+      font-weight: 800;
+      color: #2DAA9E;
+      letter-spacing: 1px;
+    }
+    h2 {
+      margin: 0 0 20px;
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #2DAA9E;
+      border-radius: 8px;
+      font-size: 16px;
+      margin: 12px 0;
+      outline: none;
+      transition: 0.2s;
+      box-sizing: border-box;
+    }
+    input:focus {
+      border-color: #136f63;
+      box-shadow: 0 0 6px rgba(19,111,99,0.4);
+    }
+    button {
+      background: #2DAA9E;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.25s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #136f63;
+      transform: scale(1.05);
+    }
+    .hint {
+      font-size: 13px;
+      color: #555;
+      margin-top: 16px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>🐢 Turtle Challenges</h1>
+    <h2>Masukkan Nama</h2>
+    <input id="playerName" placeholder="Nama kamu" />
+    <div>
+      <button onclick="startGame()">🚀 Mulai</button>
+    </div>
+    <div class="hint">Nama digunakan untuk leaderboard.</div>
+  </div>
+
+  <script>
+    const pname = localStorage.getItem('playerName');
+    if (pname) document.getElementById('playerName').value = pname;
+
+    function startGame() {
+      const name = document.getElementById("playerName").value.trim();
+      if (!name) {
+        alert("Isi nama dulu bre!");
+        return;
+      }
+      localStorage.setItem("playerName", name);
+      localStorage.setItem("score", "0");
+      if (!localStorage.getItem('leaderboard')) 
+        localStorage.setItem('leaderboard', JSON.stringify([]));
+      window.location.href = "tutorial.html";
+    }
+
+    document.getElementById('playerName').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') startGame();
+    });
+  </script>
+</body>
+</html>

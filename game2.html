@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Game 2 - Tantangan Step-by-Step</title>
+
+  <!-- SweetAlert + Skulpt -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert/dist/sweetalert.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("assets/images/bg.gif") center/cover no-repeat;
+      opacity: 0.3;
+      z-index: -1;
+    }
+    .container { max-width: 920px; margin: 18px auto; padding: 18px; background: #fff; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+    input { width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #2DAA9E; border-radius: 6px; font-family: monospace; font-size: 15px; }
+    button { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-right: 8px; }
+    .run { background: #28a745; color: white; }
+    .reset { background: #6c757d; color: white; }
+    #mycanvas { width: 400px; height: 400px; border: 3px solid #2DAA9E; border-radius: 10px; margin: 14px auto 0; position: relative; display:block; }
+    #map, #tilemap { position: absolute; top: 0; left: 0; width: 400px; height: 400px; pointer-events: none; }
+    .controls { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+    .meta { margin-top:8px; font-size:14px; color:#333; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>Game 2 — Tantangan Step-by-Step</h3>
+    <p>Ketik 1 baris perintah lalu tekan <b>Run</b>. Kamu hanya punya <b>3 kesempatan</b> sebelum gagal.</p>
+
+    <div class="controls">
+      <input id="command" placeholder="contoh: left 180" autocomplete="off" />
+      <button class="run" onclick="runStep()">▶ Run</button>
+      <button class="reset" onclick="resetGame()">⟳ Reset</button>
+    </div>
+
+    <div class="meta">
+      Langkah ke: <span id="step">0</span> / 10 <br>
+      Skor: <span id="score">0</span> <br>
+      Kesempatan: <span id="tries">0</span> / 3
+    </div>
+
+    <div style="display:flex; justify-content:center; align-items:center; margin-top:0px; margin-bottom: 10px;">
+        <div style="position:relative; width:400px; height:400px; margin-bottom:10px;">
+          <div id="mycanvas" 
+               style="position:absolute; top:0; left:0; width:400px; height:400px; z-index:4;"></div>
+      
+          <img src="assets/images/2-xcor-ycor.png"
+               style="position:absolute; top:17px; left:4px; width:400px; height:400px; z-index:2; pointer-events:none;">
+      
+          <img src="assets/images/grid.png"
+               style="position:absolute; top:10px; left:-4px; width:400px; height:400px; z-index:3; pointer-events:none; margin:8px;">
+        </div>
+      </div>
+  </div>
+
+<script>
+  // ✅ Urutan jawaban Game 2
+  const validSteps = [
+    "left(180)",
+    "forward(100)",
+    "left(90)",
+    "forward(100)",
+    "left(90)",
+    "forward(200)",
+    "left(90)",
+    "forward(200)",
+    "left(90)",
+    "forward(200)"
+  ];
+
+  let historyCmds = [];
+  let currentStep = 0;
+  let tries = 0; // jumlah gagal
+
+  // ambil skor dari localStorage
+  let score = parseInt(localStorage.getItem("score") || "0");
+
+  function updateScoreDisplay() {
+    document.getElementById("score").innerText = score;
+    localStorage.setItem("score", score);
+  }
+
+  function updateTriesDisplay() {
+    document.getElementById("tries").innerText = tries;
+  }
+
+  function builtinRead(x) {
+    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+      throw "File not found: '" + x + "'";
+    return Sk.builtinFiles["files"][x];
+  }
+
+  function parseCommand(raw) {
+    if (!raw) return "";
+    let s = raw.trim();
+    const hasParen = /\(.*\)/.test(s);
+    if (hasParen) {
+      s = s.replace(/\s+/g, "");
+      s = s.replace(/^([a-zA-Z_]+)\(/, (m, p1) => p1.toLowerCase() + "(");
+      return s;
+    } else {
+      const parts = s.split(/\s+/);
+      if (parts.length >= 2) {
+        const cmd = parts[0].toLowerCase();
+        const arg = parts.slice(1).join("");
+        return `${cmd}(${arg})`;
+      }
+      return s.toLowerCase();
+    }
+  }
+
+  function runProgramReplay(history) {
+    const imports = [
+      "from turtle import *",
+      "reset()",
+      "shape('turtle')",
+      "speed(2)",
+      ""
+    ].join("\n");
+
+    const body = history.length ? history.join("\n") + "\n" : "";
+    const prog = imports + body;
+
+    Sk.configure({ output: () => {}, read: builtinRead });
+    (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = "mycanvas";
+
+    return Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, prog, true));
+  }
+
+  async function runStep() {
+    const raw = document.getElementById("command").value;
+    if (!raw.trim()) return;
+    const parsed = parseCommand(raw);
+    document.getElementById("command").value = "";
+
+    if (parsed === validSteps[currentStep]) {
+      historyCmds.push(parsed);
+      try {
+        await runProgramReplay(historyCmds);
+        currentStep++;
+        updateStepMeta();
+        if (currentStep >= validSteps.length) {
+          score += 100; // ✅ tambah skor sekali saja
+          updateScoreDisplay();
+          swal("Mantap!", "Game 2 selesai 🎉\nSkor: " + score, "success")
+            .then(() => {
+              window.location.href = "game3.html"; // 👉 otomatis ke Game 3
+            });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      tries++;
+      updateTriesDisplay();
+      if (tries >= 3) {
+        swal("Gagal 😢", "Kamu sudah gagal 3 kali!", "error")
+          .then(() => {
+            window.location.href = "gagal.html";
+          });
+      } else {
+        swal("Salah", `Perintah tidak sesuai! Kesempatan: ${tries}/3`, "error");
+        resetGame();
+      }
+    }
+  }
+
+  function resetGame() {
+    historyCmds = [];
+    currentStep = 0;
+    updateStepMeta();
+    document.getElementById("command").value = "";
+    runProgramReplay(historyCmds).catch(err => console.error(err));
+  }
+
+  function updateStepMeta() {
+    document.getElementById("step").innerText = currentStep;
+    updateScoreDisplay();
+    updateTriesDisplay();
+  }
+
+  resetGame();
+  updateScoreDisplay();
+  updateTriesDisplay();
+</script>
+</body>
+</html>

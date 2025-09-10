@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Tutorial Step-by-Step</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert/dist/sweetalert.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      color: #222;
+      position: relative;
+      min-height: 100vh;
+    }
+    /* background gif */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url("assets/images/bg.gif") center/cover no-repeat;
+      opacity: 0.3;
+      z-index: -1;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 22px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    }
+    h1 {
+      margin: 0 0 12px 0;
+      color: #2DAA9E;
+      text-align: center;
+    }
+    .tutorial-layout {
+      display: flex;
+      gap: 20px;
+    }
+    .left-box {
+      flex: 1;
+      background: #eefdfb;
+      border-left: 4px solid #2DAA9E;
+      padding: 16px;
+      border-radius: 6px;
+    }
+    .left-box strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+    .right-box {
+      flex: 1.2;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    input { width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #2DAA9E; border-radius: 6px; font-family: monospace; font-size: 15px; }
+
+    button {
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .run { background: #28a745; color: white; }
+    .reset { background: #6c757d; color: white; }
+    .nextgame { background: #007bff; color: white; }
+    .nextgame[disabled] { background: #9bb9df; cursor: not-allowed; }
+    #mycanvas {
+      width: 420px;
+      height: 420px;
+      border: 3px solid #2DAA9E;
+      border-radius: 10px;
+      margin-top: 14px;
+      position: relative;
+      background: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Tutorial — Step by Step</h1>
+
+    <div class="tutorial-layout">
+      <!-- LEFT COLUMN -->
+      <div class="left-box">
+        <strong>Instruksi urut yang harus diketik:</strong>
+        <code>forward 100</code><br>
+        <code>right 90</code><br>
+        <code>forward 100</code><br>
+        <code>left 180</code>
+
+        <div style="margin-top:16px;">
+          <strong>Instruksi sekarang:</strong> <span id="nextInstr">forward 100</span>
+        </div>
+
+        <div style="margin-top:8px;">
+          Langkah: <b><span id="step">0</span></b> / <b>4</b>
+        </div>
+
+        <div style="margin-top:12px;">
+          <button id="startGame1" class="nextgame" disabled>Mulai Game 1</button>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="right-box">
+        <div class="controls">
+          <input id="command" placeholder="Ketik 1 baris: contoh → forward 100" autocomplete="off" />
+          <button class="run" id="btnRun">▶ Run</button>
+          <button class="reset" id="btnReset">⟳ Reset</button>
+        </div>
+        <div id="mycanvas"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Pastikan nama terisi
+  const playerName = localStorage.getItem('playerName');
+  if (!playerName) {
+    alert('Nama belum diisi — akan diarahkan ke halaman input nama.');
+    window.location.href = 'index.html';
+  }
+
+  const validSteps = ["forward(100)", "right(90)", "forward(100)", "left(180)"];
+  let historyCmds = [];
+  let currentStep = 0;
+
+  const nextInstrEl = document.getElementById("nextInstr");
+  const stepEl = document.getElementById("step");
+  const startGameBtn = document.getElementById("startGame1");
+  const cmdInput = document.getElementById("command");
+  const btnRun = document.getElementById("btnRun");
+  const btnReset = document.getElementById("btnReset");
+
+  function builtinRead(x) {
+    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+      throw "File not found: '" + x + "'";
+    return Sk.builtinFiles["files"][x];
+  }
+
+  function parseCommand(raw) {
+    if (!raw) return "";
+    let s = raw.trim();
+    const hasParen = /\(.*\)/.test(s);
+    if (hasParen) {
+      s = s.replace(/\s+/g,"");
+      s = s.replace(/^([a-zA-Z_]+)\(/, (m,p1) => p1.toLowerCase() + "(");
+      return s;
+    } else {
+      const parts = s.split(/\s+/);
+      if (parts.length >= 2) {
+        const cmd = parts[0].toLowerCase();
+        const arg = parts.slice(1).join("");
+        return `${cmd}(${arg})`;
+      }
+      return s.toLowerCase();
+    }
+  }
+
+  function runProgramReplay(history) {
+    const imports = [
+      "from turtle import *",
+      "reset()",
+      "shape('turtle')",
+      "speed(2)",
+      ""
+    ].join("\n");
+
+    const body = history.length ? history.join("\n") + "\n" : "";
+    const prog = imports + body;
+
+    Sk.pre = null; // tidak pakai output
+    Sk.configure({ read: builtinRead });
+    (Sk.TurtleGraphics || (Sk.TurtleGraphics = {})).target = "mycanvas";
+
+    return Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, prog, true));
+  }
+
+  async function runStep() {
+    const raw = cmdInput.value;
+    if (!raw.trim()) return;
+    const parsed = parseCommand(raw);
+    cmdInput.value = "";
+
+    if (parsed === validSteps[currentStep]) {
+      historyCmds.push(parsed);
+      try {
+        await runProgramReplay(historyCmds);
+        currentStep++;
+        updateUI();
+        if (currentStep >= validSteps.length) {
+          swal("Bagus!", "Tutorial selesai — siap lanjut ke Game 1.", "success");
+          startGameBtn.disabled = false;
+        }
+      } catch (err) {
+        swal("Error", err.toString(), "error");
+      }
+    } else {
+      swal("Salah", "Perintah tidak sesuai urutan. Tutorial direset.", "error");
+      resetTutorial();
+    }
+  }
+
+  function resetTutorial() {
+    historyCmds = [];
+    currentStep = 0;
+    updateUI();
+    cmdInput.value = "";
+    startGameBtn.disabled = true;
+    runProgramReplay(historyCmds);
+  }
+
+  function updateUI() {
+  stepEl.innerText = currentStep;
+  if (currentStep < validSteps.length) {
+    // tampilkan "forward 100" bukannya "forward100"
+    nextInstrEl.innerText = validSteps[currentStep]
+      .replace(/\(/g, " ")   // "(" jadi spasi
+      .replace(/\)/g, "");   // ")" dihapus
+  } else {
+    nextInstrEl.innerText = "— selesai —";
+  }
+}
+
+
+  cmdInput.addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); runStep(); } });
+  btnRun.addEventListener("click", runStep);
+  btnReset.addEventListener("click", resetTutorial);
+
+  startGameBtn.addEventListener("click", () => {
+    if (currentStep >= validSteps.length) {
+      window.location.href = 'game1.html';
+    } else {
+      swal("Belum selesai", "Selesaikan tutorial terlebih dahulu.", "warning");
+    }
+  });
+
+  updateUI();
+  resetTutorial();
+</script>
+</body>
+</html>
