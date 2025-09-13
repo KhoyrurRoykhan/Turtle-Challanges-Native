@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Leaderboard</title>
   <style>
     body {
@@ -11,6 +11,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      margin: 0;
     }
     body::before {
       content: "";
@@ -26,7 +27,7 @@
       border-radius: 12px;
       box-shadow: 0 3px 8px rgba(0,0,0,0.2);
       text-align: center;
-      max-width: 500px;
+      max-width: 600px;
       width: 100%;
     }
     h1 {
@@ -36,11 +37,12 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     th, td {
       padding: 10px;
       border-bottom: 1px solid #ddd;
+      text-align: center;
     }
     th {
       background: #2DAA9E;
@@ -48,6 +50,32 @@
     }
     tr:nth-child(even) {
       background: #f9f9f9;
+    }
+    .pagination {
+      margin: 15px 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pagination button {
+      padding: 6px 12px;
+      border: 1px solid #2DAA9E;
+      background: white;
+      color: #2DAA9E;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s, color 0.2s;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: #2DAA9E;
+      color: white;
+    }
+    .pagination button:disabled {
+      background: #2DAA9E;
+      color: white;
+      cursor: default;
     }
     .back-btn {
       padding: 10px 20px;
@@ -58,6 +86,8 @@
       font-size: 16px;
       background: #28a745;
       color: white;
+      margin-top: 10px;
+      transition: background 0.2s;
     }
     .back-btn:hover {
       background: #218838;
@@ -73,48 +103,163 @@
           <th>Peringkat</th>
           <th>Nama</th>
           <th>Skor</th>
+          <th>Waktu (detik)</th>
         </tr>
       </thead>
       <tbody id="leaderboardBody"></tbody>
     </table>
+
+    <div class="pagination" id="paginationControls"></div>
+
     <button class="back-btn" onclick="goHome()">🔄 Main Lagi</button>
   </div>
 
   <script>
+    const ITEMS_PER_PAGE = 10;
+    let leaderboard = [];
+    let currentPage = 1;
+    let totalPages = 1;
+
     function loadLeaderboard() {
-      const name = localStorage.getItem("playerName") || "Anonim";
-      const score = parseInt(localStorage.getItem("score")) || 0;
+      leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 
-      // Ambil leaderboard lama
-      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+      // Urutkan berdasarkan skor tertinggi, jika skor sama, urutkan berdasarkan waktu tercepat
+      leaderboard.sort((a, b) => {
+        if (b.score === a.score) {
+          return a.time - b.time; // waktu lebih kecil lebih baik
+        }
+        return b.score - a.score; // skor lebih besar lebih baik
+      });
 
-      // Tambahkan skor player saat ini (jika belum ada pada session ini)
-      if (!localStorage.getItem("submitted")) {
-        leaderboard.push({ name, score });
-        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
-        localStorage.setItem("submitted", "true"); // biar tidak dobel
-      }
+      totalPages = Math.ceil(leaderboard.length / ITEMS_PER_PAGE);
+      if (totalPages === 0) totalPages = 1;
+      currentPage = 1;
+      renderPage(currentPage);
+      renderPagination();
+    }
 
-      // Urutkan berdasarkan skor tertinggi
-      leaderboard.sort((a, b) => b.score - a.score);
-
-      // Render ke tabel
+    function renderPage(page) {
       const tbody = document.getElementById("leaderboardBody");
       tbody.innerHTML = "";
-      leaderboard.forEach((entry, index) => {
+
+      const startIndex = (page - 1) * ITEMS_PER_PAGE;
+      const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, leaderboard.length);
+
+      for (let i = startIndex; i < endIndex; i++) {
+        const entry = leaderboard[i];
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${index + 1}</td>
+          <td>${i + 1}</td>
           <td>${entry.name}</td>
           <td>${entry.score}</td>
+          <td>${entry.time}</td>
         `;
         tbody.appendChild(tr);
-      });
+      }
+
+      // Jika tidak ada data
+      if (leaderboard.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="4">Belum ada data leaderboard.</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderPagination() {
+      const container = document.getElementById("paginationControls");
+      container.innerHTML = "";
+
+      // Tombol Prev
+      const prevBtn = document.createElement("button");
+      prevBtn.textContent = "‹ Prev";
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPage(currentPage);
+          renderPagination();
+        }
+      };
+      container.appendChild(prevBtn);
+
+      // Tombol halaman (maksimal tampil 5 tombol halaman, dengan ... jika banyak)
+      const maxPageButtons = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+      let endPage = startPage + maxPageButtons - 1;
+      if (endPage > totalPages) {
+        endPage = totalPages;
+        startPage = Math.max(1, endPage - maxPageButtons + 1);
+      }
+
+      if (startPage > 1) {
+        // tombol halaman 1
+        const firstPageBtn = document.createElement("button");
+        firstPageBtn.textContent = "1";
+        firstPageBtn.onclick = () => {
+          currentPage = 1;
+          renderPage(currentPage);
+          renderPagination();
+        };
+        container.appendChild(firstPageBtn);
+
+        if (startPage > 2) {
+          const dots = document.createElement("span");
+          dots.textContent = "...";
+          dots.style.margin = "0 6px";
+          container.appendChild(dots);
+        }
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement("button");
+        pageBtn.textContent = i;
+        if (i === currentPage) {
+          pageBtn.disabled = true;
+        }
+        pageBtn.onclick = () => {
+          currentPage = i;
+          renderPage(currentPage);
+          renderPagination();
+        };
+        container.appendChild(pageBtn);
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          const dots = document.createElement("span");
+          dots.textContent = "...";
+          dots.style.margin = "0 6px";
+          container.appendChild(dots);
+        }
+
+        // tombol halaman terakhir
+        const lastPageBtn = document.createElement("button");
+        lastPageBtn.textContent = totalPages;
+        lastPageBtn.onclick = () => {
+          currentPage = totalPages;
+          renderPage(currentPage);
+          renderPagination();
+        };
+        container.appendChild(lastPageBtn);
+      }
+
+      // Tombol Next
+      const nextBtn = document.createElement("button");
+      nextBtn.textContent = "Next ›";
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPage(currentPage);
+          renderPagination();
+        }
+      };
+      container.appendChild(nextBtn);
     }
 
     function goHome() {
-      localStorage.removeItem("submitted"); // reset biar bisa main lagi
-      window.location.href = "index.html"; // balik ke halaman awal
+      localStorage.removeItem("submitted"); // reset agar bisa main lagi
+      window.location.href = "index.html";
     }
 
     loadLeaderboard();

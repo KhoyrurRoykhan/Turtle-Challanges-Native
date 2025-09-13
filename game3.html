@@ -65,6 +65,7 @@
   let currentStep = 0;
   let tries = 0; // jumlah gagal
   let history = [];
+  let startTime; // Tambahkan variabel untuk waktu mulai
 
   const validSteps = [
     "forward(100)",
@@ -154,6 +155,12 @@
         if (currentStep >= validSteps.length) {
           score += 100; // ✅ tambah skor sekali saja
           updateScoreDisplay();
+
+          // Hitung waktu penyelesaian game ini
+          const endTime = new Date().getTime();
+          const gameTime = Math.round((endTime - startTime) / 1000); // Waktu dalam detik
+          localStorage.setItem("game3Time", gameTime); // Simpan waktu game 3
+
           swal("Mantap!", "Game 3 selesai 🎉\nSkor: " + score, "success")
             .then(() => {
               window.location.href = "finish.html"; // 👉 otomatis ke halaman akhir
@@ -183,6 +190,7 @@
     updateStepMeta();
     document.getElementById("command").value = "";
     runProgramReplay(history).catch(err => console.error(err));
+    startTime = new Date().getTime(); // Reset waktu mulai setiap kali game di-reset
   }
 
   function updateStepMeta() {

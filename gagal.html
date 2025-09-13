@@ -38,6 +38,11 @@
       color: #155724;
       margin: 15px 0;
     }
+    .time { /* Gaya baru untuk menampilkan waktu */
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #555;
+    }
     button {
       padding: 10px 18px;
       font-size: 16px;
@@ -55,13 +60,43 @@
     <h1>😢 Kamu Gagal</h1>
     <p>Sayang sekali, kamu sudah salah 3 kali.</p>
     <p class="score">Skor Akhir: <span id="score">0</span></p>
+    <p class="time">Waktu Total: <span id="totalTime">0</span> detik</p> <!-- Tambahkan elemen untuk waktu -->
     <button onclick="goLeaderboard()">Lihat Leaderboard</button>
   </div>
 
   <script>
     // Ambil skor dari localStorage
-    const score = localStorage.getItem("score") || 0;
+    const score = parseInt(localStorage.getItem("score")) || 0;
     document.getElementById("score").innerText = score;
+
+    // Ambil waktu dari setiap game dan hitung totalnya
+    const game1Time = parseInt(localStorage.getItem("game1Time")) || 0;
+    const game2Time = parseInt(localStorage.getItem("game2Time")) || 0;
+    const game3Time = parseInt(localStorage.getItem("game3Time")) || 0;
+    const totalTime = game1Time + game2Time + game3Time;
+    document.getElementById("totalTime").innerText = totalTime;
+
+    // Fungsi untuk menyimpan hasil ke leaderboard (meskipun gagal)
+    function submitToLeaderboardOnFail() {
+      const playerName = localStorage.getItem("playerName") || "Anonim";
+      let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+      // Hanya tambahkan jika belum disubmit di sesi ini
+      if (!localStorage.getItem("submitted")) {
+        leaderboard.push({ name: playerName, score: score, time: totalTime });
+        localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        localStorage.setItem("submitted", "true"); // Tandai sudah disubmit
+      }
+
+      // Hapus data game perorangan setelah selesai
+      localStorage.removeItem("game1Time");
+      localStorage.removeItem("game2Time");
+      localStorage.removeItem("game3Time");
+      localStorage.removeItem("score"); // Reset score untuk game berikutnya
+    }
+
+    // Panggil fungsi submitToLeaderboardOnFail saat halaman dimuat
+    submitToLeaderboardOnFail();
 
     function goLeaderboard() {
       window.location.href = "leaderboard.html";

@@ -89,6 +89,7 @@
   let historyCmds = [];
   let currentStep = 0;
   let failCount = 0; // jumlah gagal
+  let startTime; // Tambahkan variabel untuk waktu mulai
 
   function builtinRead(x) {
     if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
@@ -155,6 +156,11 @@
           score += 100;
           localStorage.setItem("score", score);
 
+          // Hitung waktu penyelesaian game ini
+          const endTime = new Date().getTime();
+          const gameTime = Math.round((endTime - startTime) / 1000); // Waktu dalam detik
+          localStorage.setItem("game1Time", gameTime); // Simpan waktu game 1
+
           swal("Mantap!", "Game 1 selesai 🎉", "success")
             .then(() => { window.location.href = "game2.html"; });
         }
@@ -181,6 +187,7 @@
     updateMeta();
     document.getElementById("command").value = "";
     runProgramReplay(historyCmds).catch(err => console.error(err));
+    startTime = new Date().getTime(); // Reset waktu mulai setiap kali game di-reset
   }
 
   function updateMeta() {
